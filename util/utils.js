@@ -58,6 +58,12 @@ function formatRunDate(now) {
         pad(now.getDate()));
 }
 
+function getDB(db, multidb, i) {
+    // If we are not using multiple dbs, don't create a new db, but rather
+    // use the default.
+    return multidb == 1 ? db : db.getSiblingDB('test' + i);
+}
+
 function runTest(test, thread, multidb, multicoll, runSeconds, shard, crudOptions, printArgs) {
 
     if (typeof crudOptions === "undefined") crudOptions = getDefaultCrudOptions();
@@ -68,7 +74,7 @@ function runTest(test, thread, multidb, multicoll, runSeconds, shard, crudOption
     var collections = [];
 
     for (var i = 0; i < multidb; i++) {
-        var sibling_db = db.getSiblingDB('test' + i);
+        var sibling_db = getDB(db, multidb, i);
         var foo = test.name.replace(/\./g,"_");
         for (var j = 0; j < multicoll; j++) {
             var coll = sibling_db.getCollection(foo + j);
@@ -120,7 +126,7 @@ function runTest(test, thread, multidb, multicoll, runSeconds, shard, crudOption
     // explicitly do so now. We want the collections to be pre-allocated so
     // that allocation time is not incorporated into the benchmark.
     for (var i = 0; i < multidb; i++) {
-        var theDb = db.getSiblingDB('test' + i);
+        var theDb = getDB(db, multidb, i);
         // This will silently fail and with no side-effects if the collection
         // already exists.
         for (var j = 0; j < multicoll; j++) {

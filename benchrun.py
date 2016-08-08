@@ -41,9 +41,12 @@ def parse_arguments():
     parser.add_argument('--host', dest='hostname',
                         help='hostname of the mongod/mongos under test',
                         default='localhost')
-    parser.add_argument('-p', '--port', dest='port',
+    parser.add_argument('--port', dest='port',
                         help='Port of the mongod/mongos under test',
                         default='27017')
+    parser.add_argument('--dbname', dest='dbname',
+                        help='The name of the database to connect to',
+                        default='test')
     parser.add_argument('--replset', dest='replica_set',
                         help='replica set name of the mongod/mongos under test',
                         default=None)
@@ -110,10 +113,12 @@ def load_file_in_shell(subproc, file, echo=True):
         raise MongoShellCommandError("unable to load file %s message was %s"
                                      % (file, line))
 
+def get_db_address(host, port, dbname):
+    return "%s:%s/%s" % (host, port, dbname)
 
 def main():
     parser = parse_arguments()
-    args = parser.parse_args()
+    args, additional_args = parser.parse_known_args()
 
     if not args.testfiles:
         print("Must provide at least one test file."
@@ -150,14 +155,16 @@ def main():
             args.includeFilter = '%'
 
     # Print version info.
-    call([args.shellpath, "--norc", "--port", args.port, "--eval",
-          "print('db version: ' + db.version());"
-          " db.serverBuildInfo().gitVersion;"])
+    call([args.shellpath, get_db_address(args.hostname, args.port, args.dbname), "--norc"] +
+        additional_args +
+        ["--eval",
+        "print('db version: ' + db.version());db.serverBuildInfo().gitVersion;"])
     print("")
 
-
     # Open a mongo shell subprocess and load necessary files.
-    mongo_proc = Popen([args.shellpath, "--norc", "--quiet", "--port", args.port], stdin=PIPE, stdout=PIPE)
+    mongo_proc = Popen([args.shellpath, get_db_address(args.hostname, args.port, args.dbname), "--norc", "--quiet",] +
+        additional_args,
+        stdin=PIPE, stdout=PIPE)
 
     # load test files
     load_file_in_shell(mongo_proc, 'util/utils.js')
